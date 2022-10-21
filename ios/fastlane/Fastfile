@@ -1,0 +1,299 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  archive_folder = "#{Dir.home}/Mobile/iOS"
+  app_name = "Agent"
+  before_all do
+    ENV["FASTLANE_PASSWORD"] = ENV["CX_PASSWORD"]
+    ENV["DIAWI_TOKEN"] = "Z3LKBG5QhlEwihSco6Y6Uvjf3W7vyGFOcNwoa8GxwB"
+    # ENV["SLACK_WEBHOOK_URL"] = "https://hooks.slack.com/services/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"
+    ENV["SLACK_WEBHOOK_URL"] = ""
+  end
+
+  ########################################
+  # DEV APP
+  ########################################
+  lane :app_dev do
+    desc "Archive for app_dev lane"
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    apple_id = CredentialsManager::AppfileConfig.try_fetch_value(:apple_id)
+    
+    if app_identifier.nil?
+        raise "[FATAL] Empty app_identifier detected"
+    else
+        puts "Build App Store app with id '#{app_identifier}'"
+    end
+  
+    # get_certificates(
+    #   username: apple_id,
+    #   team_id: team_id,
+    #   output_path: "/Users/Shared/Mobile/Private Keys"
+    # )
+
+    # get_provisioning_profile(
+    #   username: apple_id,
+    #   team_id: team_id,
+    #   adhoc: false,
+    #   app_identifier: app_identifier,
+    #   output_path: "/Users/Shared/Mobile/Private Keys"
+    # )
+    
+    version_string = readVersion
+    ipa_name = "#{app_name}-Dev-#{version_string}"
+    app_folder = "#{archive_folder}/DEV/App_Store/#{ipa_name}"
+
+    puts "App Name: #{ipa_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create iap folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+    
+    update_info_plist( # Target a specific `xcodeproj` rather than finding the first available one
+      xcodeproj: "./Runner.xcodeproj",
+      plist_path: "./Runner/Runner-Dev-Info.plist",
+      display_name: "#{app_name}-Dev"
+    )
+
+    Dir.chdir("../..") do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build ipa -t lib/main_dev.dart --release --flavor=dev --export-method=app-store --obfuscate --split-debug-info=#{app_folder}")
+    end
+
+    build_app(
+      scheme: "Dev",
+      skip_build_archive: true,
+      archive_path: "../build/ios/archive/Dev.xcarchive",
+      export_method: "app-store",
+      output_directory: app_folder,
+      output_name: "#{ipa_name}.ipa"
+    )
+    
+    # upload_to_testflight(
+    #   username: apple_id,
+    #   app_identifier: app_identifier,
+    #   skip_submission: true,
+    #   skip_waiting_for_build_processing: true,
+    #   team_id: "118630545" #NOTE: This is an Apple Store Team Id not Apple Developer Store Team Id
+    # )
+    
+    # slack_message(message: "iOS HEX-AppStore-#{version_string} is uploaded to TestFlight")
+  end
+
+  lane :app_dev_adhoc do
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    apple_id = CredentialsManager::AppfileConfig.try_fetch_value(:apple_id)
+    
+    if app_identifier.nil?
+        raise "[FATAL] Empty app_identifier detected"
+    else
+        puts "Build Ad Hoc app with id '#{app_identifier}'"
+    end
+    
+    version_string = readVersion
+    ipa_name = "#{app_name}-Dev-Adhoc-#{version_string}"
+    app_folder = "#{archive_folder}/DEV/Adhoc/#{ipa_name}"
+
+    puts "App Name: #{ipa_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create iap folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    update_info_plist( # Target a specific `xcodeproj` rather than finding the first available one
+      xcodeproj: "./Runner.xcodeproj",
+      plist_path: "./Runner/Runner-Dev-Info.plist",
+      display_name: "#{app_name}-Dev-Adhoc"
+    )
+    
+    Dir.chdir("../..") do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build ipa -t lib/main_dev.dart --release --flavor=dev --export-method=ad-hoc --obfuscate --split-debug-info=#{app_folder}")
+    end
+
+    build_app(
+      scheme: "Dev",
+      skip_build_archive: true,
+      archive_path: "../build/ios/archive/Dev.xcarchive",
+      output_directory: app_folder,
+      output_name: "#{ipa_name}.ipa",
+      export_options: {
+        method: "ad-hoc",
+        provisioningProfiles: {
+            app_identifier => "#{app_name}-Dev-Adhoc",
+        }
+      }
+    )
+    
+    # diawi_with_version(version: version_string)
+    
+    # slack_message(message: "iOS #{app_name}-Dev-Adhoc-#{version_string} is uploaded to Diawi")
+  end
+
+  ########################################
+  # PROD APP
+  ########################################
+  lane :app_prod do
+    desc "Archive for app_prod lane"
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    apple_id = CredentialsManager::AppfileConfig.try_fetch_value(:apple_id)
+    
+    if app_identifier.nil?
+      raise "[FATAL] Empty app_identifier detected"
+    else
+      puts "Build App Store app with id '#{app_identifier}'"
+    end
+  
+    # get_certificates(
+    #   username: apple_id,
+    #   team_id: team_id,
+    #   output_path: "/Users/Shared/Mobile/Private Keys"
+    # )
+
+    # get_provisioning_profile(
+    #   username: apple_id,
+    #   team_id: team_id,
+    #   adhoc: false,
+    #   app_identifier: app_identifier,
+    #   output_path: "/Users/Shared/Mobile/Private Keys"
+    # )
+
+    version_string = readVersion
+    ipa_name = "#{app_name}-#{version_string}"
+    app_folder = "#{archive_folder}/PROD/App_Store/#{ipa_name}"
+
+    puts "App Name: #{ipa_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create iap folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+    
+    update_info_plist( # Target a specific `xcodeproj` rather than finding the first available one
+      xcodeproj: "./Runner.xcodeproj",
+      plist_path: "./Runner/Info.plist",
+      display_name: "#{app_name}"
+    )
+
+    Dir.chdir("../..") do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build ipa -t lib/main.dart --release --export-method=app-store --obfuscate --split-debug-info=#{app_folder}")
+    end
+
+    build_app(
+      scheme: "Runner",
+      skip_build_archive: true,
+      archive_path: "../build/ios/archive/Runner.xcarchive",
+      export_method: "app-store",
+      output_directory: app_folder,
+      output_name: "#{ipa_name}.ipa"
+    )
+    
+    # upload_to_testflight(
+    #   username: apple_id,
+    #   app_identifier: app_identifier,
+    #   skip_submission: true,
+    #   skip_waiting_for_build_processing: true,
+    #   team_id: "118630545" #NOTE: This is an Apple Store Team Id not Apple Developer Store Team Id
+    # )
+    
+    # slack_message(message: "iOS HEX-AppStore-#{version_string} is uploaded to TestFlight")
+  end
+
+  lane :app_prod_adhoc do
+    app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    team_id = CredentialsManager::AppfileConfig.try_fetch_value(:team_id)
+    apple_id = CredentialsManager::AppfileConfig.try_fetch_value(:apple_id)
+    
+    if app_identifier.nil?
+      raise "[FATAL] Empty app_identifier detected"
+    else
+      puts "Build Ad Hoc app with id '#{app_identifier}'"
+    end
+    
+    version_string = readVersion
+    ipa_name = "#{app_name}-Adhoc-#{version_string}"
+    app_folder = "#{archive_folder}/PROD/Adhoc/#{ipa_name}"
+
+    puts "App Name: #{ipa_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create iap folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    update_info_plist( # Target a specific `xcodeproj` rather than finding the first available one
+      xcodeproj: "./Runner.xcodeproj",
+      plist_path: "./Runner/Runner-Dev-Info.plist",
+      display_name: "#{app_name}-Adhoc"
+    )
+    
+    Dir.chdir("../..") do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build ipa -t lib/main.dart --release --export-method=ad-hoc --obfuscate --split-debug-info=#{app_folder}")
+    end
+
+    build_app(
+      scheme: "Runner",
+      skip_build_archive: true,
+      archive_path: "../build/ios/archive/Runner.xcarchive",
+      output_directory: app_folder,
+      output_name: "#{ipa_name}.ipa",
+      export_options: {
+        method: "ad-hoc",
+        provisioningProfiles: {
+            app_identifier => "#{app_name}-Adhoc",
+        }
+      }
+    )
+    
+    # diawi_with_version(version: version_string)
+    
+    # slack_message(message: "iOS #{app_name}-Dev-Adhoc-#{version_string} is uploaded to Diawi")
+  end
+
+  ########################################
+  # Utility lanes
+  ########################################
+
+  lane :slack_message do |options|
+    message = options[:message]
+    slack(
+      slack_url: ENV["SLACK_WEBHOOK_URL"],
+      #channel: "#ios_app_build",
+      message: message
+    )
+  end
+
+  lane :diawi_with_version do |options|
+    version = options[:version]
+    diawi(
+      token: ENV["DIAWI_TOKEN"],
+      timeout: 300,
+      callback_emails: "",
+      comment: "AdHoc build for tester only: #{version}"
+    )
+  end
+
+  lane :readVersion do
+    UI.verbose "Getting versions"
+    path = "../../pubspec.yaml"
+    version_regex = /version:\s+(\d+\.\d+\.\d+)[\+](\d+)/
+
+    s = File.read(path)
+    version_name = s[version_regex, 1].to_s
+    version_code = s[version_regex, 2].to_i
+    "v#{version_name}.#{version_code}"
+  end
+end

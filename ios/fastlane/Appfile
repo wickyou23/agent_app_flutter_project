@@ -1,0 +1,19 @@
+# app_identifier("[[APP_IDENTIFIER]]") # The bundle identifier of your app
+# apple_id("[[APPLE_ID]]") # Your Apple Developer Portal username
+
+
+# For more information about the Appfile, see:
+#     https://docs.fastlane.tools/advanced/#appfile
+
+apple_id "thang.phung@veriksystems.com" #default is dev apple id
+team_id "D8252FJRUX" #Apple Developer Team ID
+
+for_platform :ios do
+  for_lane :app_dev do
+    app_identifier 'com.tp.agent.dev'
+  end
+  
+  for_lane :app_dev_adhoc do
+    app_identifier 'com.tp.agent.dev'
+  end
+end

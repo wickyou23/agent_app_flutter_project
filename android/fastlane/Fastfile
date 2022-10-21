@@ -1,0 +1,198 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+  archive_folder = "#{Dir.home}/Mobile/Android"
+  app_name = "Agent"
+  before_all do
+    ENV["FASTLANE_PASSWORD"] = ENV["CX_PASSWORD"]
+    ENV["DIAWI_TOKEN"] = "Z3LKBG5QhlEwihSco6Y6Uvjf3W7vyGFOcNwoa8GxwB"
+    # ENV["SLACK_WEBHOOK_URL"] = "https://hooks.slack.com/services/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"
+    ENV["SLACK_WEBHOOK_URL"] = ""
+  end
+
+  desc "Runs all the tests"
+  lane :test do
+    gradle(task: "test")
+  end
+
+  ########################################
+  # DEV APP
+  ########################################
+  desc "Deploy a new version to the Google Play"
+  lane :app_dev do
+    # Clean assembleRelease
+    gradle(task: "clean assembleRelease")
+
+    # Prepare EVN
+    version_string = readVersion
+    aab_name = "#{app_name}-DEV-Release-#{version_string}"
+    app_folder = "#{archive_folder}/DEV/aab/#{aab_name}"
+    src_aab_path = "build/app/outputs/bundle/devRelease/app-dev-release.aab"
+    desc_aab_path = "#{app_folder}/#{aab_name}.aab"
+
+    puts "App Name: #{aab_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create abb folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    # Build abb
+    Dir.chdir("../..") do
+      sh("flutter doctor -v")
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build appbundle -t lib/main_dev.dart --release --flavor=dev --obfuscate --split-debug-info=#{app_folder}")
+
+      FileUtils.cp(src_aab_path, desc_aab_path)
+    end
+
+    # upload_to_play_store
+  end
+
+  desc "Submit a new apk to Diawi"
+  lane :app_dev_apk do
+    # Clean assembleRelease
+    gradle(task: "clean assembleRelease")
+
+    # Prepare EVN
+    version_string = readVersion
+    apk_name = "#{app_name}-DEV-Release-#{version_string}"
+    app_folder = "#{archive_folder}/DEV/apk/#{apk_name}"
+    src_apk_path = "build/app/outputs/flutter-apk/app-dev-release.apk"
+    desc_apk_path = "#{app_folder}/#{apk_name}.apk"
+
+    puts "App Name: #{apk_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create apk folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    # Build APK
+    Dir.chdir("../..") do
+      sh("flutter doctor -v")
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build apk -t lib/main_dev.dart --release --flavor=dev --obfuscate --split-debug-info=#{app_folder}")
+      
+      FileUtils.cp(src_apk_path, desc_apk_path)
+    end
+
+    # diawi_with_version(version: version_string, apkFilePath: desc_apk_path)
+
+    # crashlytics
+    # sh "your_script.sh"
+    # You can also use other beta testing services here
+  end
+
+  ########################################
+  # PROD APP
+  ########################################
+  desc "Deploy a new version to the Google Play"
+  lane :app_prod do
+    # Clean assembleRelease
+    gradle(task: "clean assembleRelease")
+
+    # Prepare EVN
+    version_string = readVersion
+    aab_name = "#{app_name}-PROD-Release-#{version_string}"
+    app_folder = "#{archive_folder}/PROD/aab/#{aab_name}"
+    src_aab_path = "build/app/outputs/bundle/prodRelease/app-prod-release.aab"
+    desc_aab_path = "#{app_folder}/#{aab_name}.aab"
+
+    puts "App Name: #{aab_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create abb folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    # Build abb
+    Dir.chdir("../..") do
+      sh("flutter doctor -v")
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build appbundle -t lib/main.dart --release --flavor=prod --obfuscate --split-debug-info=#{app_folder}")
+
+      FileUtils.cp(src_aab_path, desc_aab_path)
+    end
+
+    # upload_to_play_store
+  end
+
+  desc "Submit a new apk to Diawi"
+  lane :app_prod_apk do
+    # Clean assembleRelease
+    gradle(task: "clean assembleRelease")
+
+    # Prepare EVN
+    version_string = readVersion
+    apk_name = "#{app_name}-PROD-Release-#{version_string}"
+    app_folder = "#{archive_folder}/PROD/apk/#{apk_name}"
+    src_apk_path = "build/app/outputs/flutter-apk/app-prod-release.apk"
+    desc_apk_path = "#{app_folder}/#{apk_name}.apk"
+
+    puts "App Name: #{apk_name}"
+    puts "=>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Create apk folder if needed"
+    FileUtils.mkdir_p(app_folder) unless Dir.exist?(app_folder)
+
+    # Build APK
+    Dir.chdir("../..") do
+      sh("flutter doctor -v")
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build apk -t lib/main.dart --release --flavor=prod --obfuscate --split-debug-info=#{app_folder}")
+      
+      FileUtils.cp(src_apk_path, desc_apk_path)
+    end
+
+    # diawi_with_version(version: version_string, apkFilePath: desc_apk_path)
+
+    # crashlytics
+    # sh "your_script.sh"
+    # You can also use other beta testing services here
+  end
+
+  ########################################
+  # Utility lanes
+  ########################################
+
+  lane :slack_message do |options|
+    message = options[:message]
+    slack(
+      slack_url: ENV["SLACK_WEBHOOK_URL"],
+      #channel: "#ios_app_build",
+      message: message
+    )
+  end
+
+  lane :readVersion do
+    UI.verbose "Getting versions"
+    path = "../../pubspec.yaml"
+    version_regex = /version:\s+(\d+\.\d+\.\d+)[\+](\d+)/
+
+    s = File.read(path)
+    version_name = s[version_regex, 1].to_s
+    version_code = s[version_regex, 2].to_i
+    "v#{version_name}.#{version_code}"
+  end
+
+  lane :diawi_with_version do |options|
+    version = options[:version]
+    apk_file_path = options[:apkFilePath]
+    diawi(
+      token: ENV["DIAWI_TOKEN"],
+      timeout: 300,
+      callback_emails: "",
+      comment: "APK build for tester only: #{version}",
+      file: apk_file_path
+    )
+  end
+end

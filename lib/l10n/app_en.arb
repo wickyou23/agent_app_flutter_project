@@ -1,0 +1,8 @@
+{
+  "@@locale": "en",
+  "dashboard": "Dashboard",
+  "@dashboard": {
+    "description": "The main page of the app"
+  },
+  "touchMe": "Touch Me"
+}
